@@ -15,18 +15,21 @@ import { AnyVerifier } from 'express-quick-builder/dist/util/DataVerify';
 
 @Controller
 export default class DictController {
-  @GetMapping('/list/lang')
-  @SetSuccessMessage('Got language list')
-  async getLangList(req: WrappedRequest): Promise<string[] | null> {}
+  // @GetMapping('/list/lang')
+  // @SetSuccessMessage('Got language list')
+  // async getLangList(req: WrappedRequest): Promise<string[] | null> {}
+
+  // @GetMapping('/fetch/all')
 
   @GetMapping('/fetch')
   @SetSuccessMessage('Fetched lists successfully')
   async fetchData(req: WrappedRequest): Promise<void> {
-    const { skip, limit, language, word } = req.verify.query({
+    const { skip, limit, search } = req.verify.query({
       skip: DataTypes.numberNull(),
       limit: DataTypes.numberNull(),
-      language: DataTypes.stringNull(),
-      word: DataTypes.stringNull(),
+      search: {
+        langcode: DataTypes.string(),
+      },
     });
   }
 }

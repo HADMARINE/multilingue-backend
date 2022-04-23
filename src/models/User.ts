@@ -19,7 +19,9 @@ const UserSchema = new Schema<UserDocument>({
   authority: { type: String, default: 'normal' },
 });
 
-UserSchema.methods.checkUserExists = async function (userid): Promise<boolean> {
+UserSchema.methods.checkUserExists = async function (
+  userid: string,
+): Promise<boolean> {
   if (await models.User.findOne({ userid }).exec()) return true;
   return false;
 };

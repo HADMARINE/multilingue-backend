@@ -25,27 +25,6 @@ const translateDict: Record<string, string> = {
   FILE_PROCESS_FAIL: '파일 작업 도중 실패했습니다.',
 };
 
-// const _translateDict = {
-//   UNSAFE_NOT_HANDLED: '',
-//   PAGE_NOT_FOUND: '',
-//   TOO_MANY_REQUESTS: '',
-//   PASSWORD_ENCRYPTION_FAIL: '',
-//   TOKEN_INVALID: '',
-//   TOKEN_EXPIRED: '',
-//   TOKEN_RENEW_NEEDED: '',
-//   LOGIN_FAIL: '',
-//   LACK_OF_AUTHORITY: '',
-//   PARAMETER_NOT_PROVIDED: '',
-//   PARAMETER_INVALID: '',
-//   DATA_NULL: '',
-//   DATABASE_SAVE_FAIL: '',
-//   UNIQUE_DATA_CONFLICT: '',
-//   DATA_NOT_FOUND: '',
-//   PARTIAL_SUCCESS: '',
-//   DATABASE_PROCESS_FAIL: '',
-//   FILE_PROCESS_FAIL: '',
-// };
-
 export default (code: string): string => {
   const returnData = translateDict[code];
   if (!returnData) {

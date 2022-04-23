@@ -1,4 +1,4 @@
-const translateDict: Record<string, any> = {
+const translateDict: Record<string, string> = {
   UNSAFE_NOT_HANDLED:
     'Unsafe method called, but all safety sequence are not released. Check that you provided UNSAFE parameter.',
   PAGE_NOT_FOUND: 'Cannot find page you requested.',
