@@ -6,6 +6,7 @@ export interface UserInterface {
   password: string;
   enckey: string;
   authority?: string;
+  langsort: string[];
 }
 
 export interface UserDocument extends Document, UserInterface {
@@ -17,6 +18,7 @@ const UserSchema = new Schema<UserDocument>({
   password: { type: String, required: true },
   enckey: { type: String, required: true },
   authority: { type: String, default: 'normal' },
+  langsort: { type: [String], default: [] },
 });
 
 UserSchema.methods.checkUserExists = async function (

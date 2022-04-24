@@ -2,14 +2,14 @@ import { model, Schema, Document, models } from 'mongoose';
 import error from '@error/ErrorDictionary';
 
 export interface WordInterface {
-  id: Schema.Types.ObjectId;
+  dict: Schema.Types.ObjectId;
   lang: string;
   word: string;
   description?: string;
 }
 
 const WordSchema: Schema = new Schema({
-  id: { type: Schema.Types.ObjectId, reuqired: true, ref: 'Dict' },
+  dict: { type: Schema.Types.ObjectId, required: true, ref: 'Dict' },
   lang: { type: String, required: true },
   word: { type: String, required: true },
   description: { type: String, required: false },
