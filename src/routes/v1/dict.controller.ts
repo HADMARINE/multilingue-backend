@@ -10,6 +10,7 @@ import {
   WrappedRequest,
   DataTypes,
   SetSuccessMessage,
+  SetMiddleware,
 } from 'express-quick-builder';
 import { AnyVerifier } from 'express-quick-builder/dist/util/DataVerify';
 import ErrorDictionary from '@error/ErrorDictionary';
@@ -17,6 +18,7 @@ import Dict, { DictInterface } from '@models/Dict';
 import { QueryBuilder } from '@util/Assets';
 import Word from '@models/Word';
 import User from '@models/User';
+import { UserAuthority } from '@util/Middleware';
 
 @Controller
 export default class DictController {
@@ -24,11 +26,18 @@ export default class DictController {
   // @SetSuccessMessage('Got language list')
   // async getLangList(req: WrappedRequest): Promise<string[] | null> {}
 
+  @PostMapping('/vocab')
+  @SetMiddleware(UserAuthority)
+  @SetSuccessMessage('Successfully registered new vocabulary')
+  async registerVocab(req: WrappedRequest): Promise<void | null> {}
+
+  // Check this endpoint to improve about multi tasking
   @GetMapping('/fetch')
+  @SetMiddleware(UserAuthority)
   @SetSuccessMessage('Fetched lists successfully')
   async fetchData(req: WrappedRequest): Promise<{
     sort: string[];
-    dict: Record<string, { word: string; description: string | undefined }>[];
+    dict: Record<string, { word: string; description?: string }>[];
   } | null> {
     const { skip, limit, search } = req.verify.query({
       skip: DataTypes.numberNull(),
@@ -64,16 +73,20 @@ export default class DictController {
 
       if (!user) throw ErrorDictionary.auth.fail();
 
-      const vocabObj: Record<
-        string,
-        { word: string; description: string | undefined }
-      > = {};
+      const vocabObj: Record<string, { word: string; description?: string }> =
+        {};
 
       for (const word of foundVocabs) {
-        vocabObj[word.lang] = {
-          word: word.word,
-          description: word.description,
-        };
+        if (word.description) {
+          vocabObj[word.lang] = {
+            word: word.word,
+            description: word.description,
+          };
+        } else {
+          vocabObj[word.lang] = {
+            word: word.word,
+          };
+        }
       }
 
       return {
@@ -86,12 +99,39 @@ export default class DictController {
       .skip(skip || 0)
       .limit(limit || 10);
 
-    const dictList = data.map(async (d) => {
-      const words = await Word.find({ dict: d._id });
-    });
-
     if (data.length === 0) {
       return null;
     }
+
+    const dictList = await Promise.all(
+      data.map(async (d) => {
+        const words = await Word.find({ dict: d._id });
+        const wordMap: Record<string, { word: string; description?: string }> =
+          {};
+
+        for (const w of words) {
+          if (w.description) {
+            wordMap[w.lang] = {
+              word: w.word,
+              description: w.description,
+            };
+          } else {
+            wordMap[w.lang] = {
+              word: w.word,
+            };
+          }
+        }
+
+        return wordMap;
+      }),
+    );
+
+    const user = await User.findOne({ _id: userData._id });
+    if (!user) throw ErrorDictionary.auth.fail();
+
+    return {
+      sort: user.langsort,
+      dict: dictList,
+    };
   }
 }
