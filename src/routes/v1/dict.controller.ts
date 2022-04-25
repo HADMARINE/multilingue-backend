@@ -26,16 +26,46 @@ export default class DictController {
   // @SetSuccessMessage('Got language list')
   // async getLangList(req: WrappedRequest): Promise<string[] | null> {}
 
-  @PostMapping('/vocab')
+  @PostMapping('/voca/')
   @SetMiddleware(UserAuthority)
   @SetSuccessMessage('Successfully registered new vocabulary')
-  async registerVocab(req: WrappedRequest): Promise<void | null> {}
+  async registerVocab(req: WrappedRequest): Promise<void | null> {
+    const { userData, voca } = req.verify.body({
+      userData: DataTypes.object(),
+      voca: DataTypes.object(),
+    });
+
+    for (const v of Object.values(voca)) {
+      if (!v.word) throw ErrorDictionary.data.parameterNull('voca > word');
+    }
+
+    const user = await User.findOne({ _id: userData._id });
+    if (!user) throw ErrorDictionary.auth.fail();
+
+    const dict = await Dict.create({ user: user._id });
+
+    const vocas = Promise.race(
+      Object.entries(voca).map(async ([l, v]) => {
+        const newWord = await Word.create(
+          QueryBuilder({
+            lang: l,
+            word: v.word,
+            description: v.description,
+            dict: dict._id,
+          }),
+        );
+        return newWord;
+      }),
+    );
+
+    // TODO : Check integrity of vocas
+  }
 
   // Check this endpoint to improve about multi tasking
-  @GetMapping('/fetch')
+  @GetMapping('/voca/fetch')
   @SetMiddleware(UserAuthority)
   @SetSuccessMessage('Fetched lists successfully')
-  async fetchData(req: WrappedRequest): Promise<{
+  async fetchVocabularies(req: WrappedRequest): Promise<{
     sort: string[];
     dict: Record<string, { word: string; description?: string }>[];
   } | null> {
