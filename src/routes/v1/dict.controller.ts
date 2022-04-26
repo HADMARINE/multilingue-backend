@@ -44,7 +44,7 @@ export default class DictController {
 
     const dict = await Dict.create({ user: user._id });
 
-    const vocas = Promise.race(
+    const vocas = await Promise.all(
       Object.entries(voca).map(async ([l, v]) => {
         const newWord = await Word.create(
           QueryBuilder({
@@ -57,6 +57,12 @@ export default class DictController {
         return newWord;
       }),
     );
+
+    if (vocas.length === Object.keys(voca).length) {
+      return undefined;
+    } else {
+      throw ErrorDictionary.db.partial('voca', vocas.length);
+    }
 
     // TODO : Check integrity of vocas
   }
