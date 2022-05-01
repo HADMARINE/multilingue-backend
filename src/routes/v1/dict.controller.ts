@@ -11,6 +11,8 @@ import {
   DataTypes,
   SetSuccessMessage,
   SetMiddleware,
+  PatchMapping,
+  DeleteMapping,
 } from 'express-quick-builder';
 import { AnyVerifier } from 'express-quick-builder/dist/util/DataVerify';
 import ErrorDictionary from '@error/ErrorDictionary';
@@ -26,7 +28,7 @@ export default class DictController {
   // @SetSuccessMessage('Got language list')
   // async getLangList(req: WrappedRequest): Promise<string[] | null> {}
 
-  @PostMapping('/voca/')
+  @PostMapping('/voca')
   @SetMiddleware(UserAuthority)
   @SetSuccessMessage('Successfully registered new vocabulary')
   async registerVocab(req: WrappedRequest): Promise<void | null> {
@@ -59,12 +61,51 @@ export default class DictController {
     );
 
     if (vocas.length === Object.keys(voca).length) {
-      return undefined;
+      return;
     } else {
       throw ErrorDictionary.db.partial('voca', vocas.length);
     }
 
     // TODO : Check integrity of vocas
+  }
+
+  @PatchMapping('/voca')
+  @SetMiddleware(UserAuthority)
+  @SetSuccessMessage('Updated vocabularies successfully')
+  async modifyVocabularies(req: WrappedRequest): Promise<void | null> {
+    const { id, words } = req.verify.body({
+      id: DataTypes.string(),
+      words: DataTypes.array({ valueVerifier: DataTypes.object() }), // requires prop lang, word
+    });
+
+    const word = await Word.find(QueryBuilder({ dict: id }));
+    if (word.length === 0) {
+      return null;
+    }
+
+    for (const w of words) {
+      const langcode = w?.lang;
+      if (!langcode || w?.word) continue;
+      for (const _w of word) {
+        if (langcode === _w.lang) {
+          const modifiedWord = await Word.findOneAndUpdate(
+            { _id: _w._id },
+            { word: w.word },
+          );
+        }
+      }
+    }
+    return;
+  }
+
+  @DeleteMapping('/voca')
+  @SetMiddleware(UserAuthority)
+  @SetSuccessMessage('Successfully deleted vocabulary')
+  async deleteVocabulary(req: WrappedRequest): Promise<void | null> {
+    const { id } = req.verify.body({
+      id: DataTypes.string(),
+    });
+    const word = await Word.deleteMany({ dict: id });
   }
 
   // Check this endpoint to improve about multi tasking
