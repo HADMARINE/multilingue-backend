@@ -105,7 +105,9 @@ export default class DictController {
     const { id } = req.verify.body({
       id: DataTypes.string(),
     });
-    const word = await Word.deleteMany({ dict: id });
+    const word = await Word.deleteMany({ dict: id as any });
+    if (word.deletedCount === 0) return null;
+    return;
   }
 
   // Check this endpoint to improve about multi tasking
