@@ -11,6 +11,7 @@ import {
   DataTypes,
   SetSuccessMessage,
   PatchMapping,
+  DeleteMapping,
 } from 'express-quick-builder';
 import { AnyVerifier } from 'express-quick-builder/dist/util/DataVerify';
 import ErrorDictionary from '@error/ErrorDictionary';
@@ -172,7 +173,7 @@ export default class DictController {
 
   @PostMapping('/register')
   @SetSuccessMessage('Word registered successfully')
-  async registerWord(req: WrappedRequest): Promise<null> {
+  async registerWord(req: WrappedRequest): Promise<undefined> {
     const { words, userData } = req.verify.body({
       words: DataTypes.object(),
       userData: DataTypes.object(),
@@ -215,12 +216,12 @@ export default class DictController {
       }
     }
 
-    return null;
+    return undefined;
   }
 
   @PatchMapping('/')
   @SetSuccessMessage('Word modified successfully')
-  async modifyWord(req: WrappedRequest): Promise<null> {
+  async modifyWord(req: WrappedRequest): Promise<void> {
     const { id, words } = req.verify.body({
       id: DataTypes.string(),
       words: DataTypes.object(),
@@ -256,6 +257,17 @@ export default class DictController {
       await Word.findByIdAndDelete(w._id);
     }
 
-    return null;
+    return undefined;
+  }
+
+  @DeleteMapping('/')
+  @SetSuccessMessage('Deleted data successfully')
+  async deleteWord(req: WrappedRequest): Promise<void> {
+    const { id } = req.verify.body({ id: DataTypes.string });
+
+    const deletedWords = await Word.deleteMany({ dict: id });
+    const deletedDict = await Dict.deleteOne({ _id: id });
+
+    return undefined;
   }
 }
