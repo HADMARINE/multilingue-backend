@@ -112,4 +112,8 @@ export default {
     S3: (message = `Uploading file failed.`): Error =>
       ErrorBuilder(message, 500, `FILE_PROCESS_FAIL`),
   },
+  langcode: {
+    notexist: (langcode: string): Error =>
+      ErrorBuilder(`LangCode ${langcode} is invalid.`, 400, `LANGCODE_INVALID`),
+  },
 };

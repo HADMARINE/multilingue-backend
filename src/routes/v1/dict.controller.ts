@@ -10,9 +10,7 @@ import {
   WrappedRequest,
   DataTypes,
   SetSuccessMessage,
-  SetMiddleware,
   PatchMapping,
-  DeleteMapping,
 } from 'express-quick-builder';
 import { AnyVerifier } from 'express-quick-builder/dist/util/DataVerify';
 import ErrorDictionary from '@error/ErrorDictionary';
@@ -20,7 +18,8 @@ import Dict, { DictInterface } from '@models/Dict';
 import { QueryBuilder } from '@util/Assets';
 import Word from '@models/Word';
 import User from '@models/User';
-import { UserAuthority } from '@util/Middleware';
+import { Schema } from 'mongoose';
+import langcode from '@src/file/langcode.json';
 
 @Controller
 export default class DictController {
@@ -137,6 +136,9 @@ export default class DictController {
       throw ErrorDictionary.data.parameterNull('word');
     }
 
+    const user = await User.findOne({ _id: userData._id });
+    if (!user) throw ErrorDictionary.auth.fail();
+
     if (word) {
       const dictList = await Dict.find({ user: userData._id });
       const data = await Word.findOne(
@@ -148,12 +150,10 @@ export default class DictController {
 
       const foundVocabs = await Word.find({ dict: data.dict });
 
-      const user = await User.findOne({ _id: userData._id });
-
-      if (!user) throw ErrorDictionary.auth.fail();
-
-      const vocabObj: Record<string, { word: string; description?: string }> =
-        {};
+      const vocabObj: Record<
+        string,
+        { word: string; description: string | undefined }
+      > = {};
 
       for (const word of foundVocabs) {
         if (word.description) {
@@ -178,39 +178,172 @@ export default class DictController {
       .skip(skip || 0)
       .limit(limit || 10);
 
-    if (data.length === 0) {
-      return null;
-    }
-
     const dictList = await Promise.all(
       data.map(async (d) => {
-        const words = await Word.find({ dict: d._id });
-        const wordMap: Record<string, { word: string; description?: string }> =
-          {};
+        const foundVocabs = await Word.find({ dict: d._id });
 
-        for (const w of words) {
-          if (w.description) {
-            wordMap[w.lang] = {
-              word: w.word,
-              description: w.description,
-            };
-          } else {
-            wordMap[w.lang] = {
-              word: w.word,
-            };
-          }
+        const vocabObj: Record<
+          string,
+          { word: string; description: string | undefined }
+        > = {};
+
+        for (const word of foundVocabs) {
+          vocabObj[word.lang] = {
+            word: word.word,
+            description: word.description,
+          };
         }
 
-        return wordMap;
+        return vocabObj;
       }),
     );
 
-    const user = await User.findOne({ _id: userData._id });
-    if (!user) throw ErrorDictionary.auth.fail();
+    if (data.length === 0) {
+      return null;
+    }
 
     return {
       sort: user.langsort,
       dict: dictList,
     };
+  }
+
+  @PostMapping('/duplicate')
+  @SetSuccessMessage('Word registered successfully')
+  async checkWordDupliaction(req: WrappedRequest): Promise<{
+    duplication: boolean;
+    ref?: string[];
+  }> {
+    const { words, userData } = req.verify.body({
+      words: DataTypes.object(),
+      userData: DataTypes.object(),
+    });
+
+    const dictList = (await Dict.find({ user: userData._id })).map(
+      (d) => d._id,
+    );
+
+    if (!dictList.length) throw ErrorDictionary.db.notfound();
+
+    let dictKeys: Schema.Types.ObjectId[] = [];
+
+    for (const word of Object.values(words)) {
+      const foundWord = await Word.findOne({
+        word: word,
+        dict: { $in: dictList },
+      });
+      if (foundWord) {
+        let isContainedInList: boolean = false;
+        for (const k of dictKeys) {
+          if (k === foundWord.dict) {
+            isContainedInList = true;
+            break;
+          }
+        }
+        if (!isContainedInList) {
+          dictKeys.push(foundWord.dict);
+        }
+      }
+    }
+
+    if (dictKeys.length !== 0) {
+      return {
+        duplication: true,
+        ref: dictKeys as unknown as string[],
+      };
+    } else {
+      return {
+        duplication: false,
+      };
+    }
+  }
+
+  @PostMapping('/register')
+  @SetSuccessMessage('Word registered successfully')
+  async registerWord(req: WrappedRequest): Promise<null> {
+    const { words, userData } = req.verify.body({
+      words: DataTypes.object(),
+      userData: DataTypes.object(),
+    });
+
+    const dict = await Dict.create({ user: userData._id });
+    for (const w of Object.entries(words)) {
+      if (!w[1].word) {
+        throw ErrorDictionary.data.parameterInvalid('word');
+      }
+
+      let isLangcodeExist: boolean = false;
+      for (const lang of langcode) {
+        if (lang.code === w[0]) {
+          isLangcodeExist = true;
+        }
+      }
+      if (!isLangcodeExist) {
+        throw ErrorDictionary.langcode.notexist(w[0]);
+      }
+    }
+
+    for (const w of Object.entries(words) /** [lang, word] */) {
+      const wordDoc = w[1].description
+        ? {
+            dict: dict._id,
+            lang: w[0],
+            word: w[1].word,
+          }
+        : {
+            dict: dict._id,
+            lang: w[0],
+            word: w[1].word,
+            description: w[1].description,
+          };
+      try {
+        await Word.create(wordDoc);
+      } catch {
+        throw ErrorDictionary.db.create('word');
+      }
+    }
+
+    return null;
+  }
+
+  @PatchMapping('/')
+  @SetSuccessMessage('Word modified successfully')
+  async modifyWord(req: WrappedRequest): Promise<null> {
+    const { id, words } = req.verify.body({
+      id: DataTypes.string(),
+      words: DataTypes.object(),
+    });
+
+    const wordsArr = Object.entries(words);
+
+    let modifiedKeys: string[] = [];
+    for (const w of wordsArr) {
+      await Word.findOneAndUpdate(
+        {
+          dict: id as unknown as Schema.Types.ObjectId,
+          lang: w[0],
+        },
+        {
+          $set: {
+            word: w[1].word,
+            description: w[1].description,
+          },
+        },
+        { upsert: true },
+      );
+      modifiedKeys.push(w[0]);
+    }
+
+    const existingWords = (
+      await Word.find({
+        dict: id as unknown as Schema.Types.ObjectId,
+      })
+    ).filter((w) => modifiedKeys.indexOf(w.lang) === -1);
+
+    for (const w of existingWords) {
+      await Word.findByIdAndDelete(w._id);
+    }
+
+    return null;
   }
 }
