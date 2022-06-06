@@ -27,93 +27,9 @@ export default class DictController {
   // @SetSuccessMessage('Got language list')
   // async getLangList(req: WrappedRequest): Promise<string[] | null> {}
 
-  @PostMapping('/voca')
-  @SetMiddleware(UserAuthority)
-  @SetSuccessMessage('Successfully registered new vocabulary')
-  async registerVocab(req: WrappedRequest): Promise<void | null> {
-    const { userData, voca } = req.verify.body({
-      userData: DataTypes.object(),
-      voca: DataTypes.object(),
-    });
-
-    for (const v of Object.values(voca)) {
-      if (!v.word) throw ErrorDictionary.data.parameterNull('voca > word');
-    }
-
-    const user = await User.findOne({ _id: userData._id });
-    if (!user) throw ErrorDictionary.auth.fail();
-
-    const dict = await Dict.create({ user: user._id });
-
-    const vocas = await Promise.all(
-      Object.entries(voca).map(async ([l, v]) => {
-        const newWord = await Word.create(
-          QueryBuilder({
-            lang: l,
-            word: v.word,
-            description: v.description,
-            dict: dict._id,
-          }),
-        );
-        return newWord;
-      }),
-    );
-
-    if (vocas.length === Object.keys(voca).length) {
-      return;
-    } else {
-      throw ErrorDictionary.db.partial('voca', vocas.length);
-    }
-
-    // TODO : Check integrity of vocas
-  }
-
-  @PatchMapping('/voca')
-  @SetMiddleware(UserAuthority)
-  @SetSuccessMessage('Updated vocabularies successfully')
-  async modifyVocabularies(req: WrappedRequest): Promise<void | null> {
-    const { id, words } = req.verify.body({
-      id: DataTypes.string(),
-      words: DataTypes.array({ valueVerifier: DataTypes.object() }), // requires prop lang, word
-    });
-
-    const word = await Word.find(QueryBuilder({ dict: id }));
-    if (word.length === 0) {
-      return null;
-    }
-
-    for (const w of words) {
-      const langcode = w?.lang;
-      if (!langcode || w?.word) continue;
-      for (const _w of word) {
-        if (langcode === _w.lang) {
-          const modifiedWord = await Word.findOneAndUpdate(
-            { _id: _w._id },
-            { word: w.word },
-          );
-        }
-      }
-    }
-    return;
-  }
-
-  @DeleteMapping('/voca')
-  @SetMiddleware(UserAuthority)
-  @SetSuccessMessage('Successfully deleted vocabulary')
-  async deleteVocabulary(req: WrappedRequest): Promise<void | null> {
-    const { id } = req.verify.body({
-      id: DataTypes.string(),
-    });
-    const word = await Word.deleteMany({ dict: id as any });
-    if (word.deletedCount === 0) return null;
-    return;
-  }
-
-  // Check this endpoint to improve about multi tasking
-  @GetMapping('/voca/fetch')
-  @SetMiddleware(UserAuthority)
+  @GetMapping('/fetch')
   @SetSuccessMessage('Fetched lists successfully')
-  async fetchVocabularies(req: WrappedRequest): Promise<{
+  async fetchData(req: WrappedRequest): Promise<{
     sort: string[];
     dict: Record<string, { word: string; description?: string }>[];
   } | null> {
@@ -150,22 +66,18 @@ export default class DictController {
 
       const foundVocabs = await Word.find({ dict: data.dict });
 
-      const vocabObj: Record<
-        string,
-        { word: string; description: string | undefined }
-      > = {};
+      const vocabObj: Record<string, { word: string; description?: string }> =
+        {};
 
       for (const word of foundVocabs) {
-        if (word.description) {
-          vocabObj[word.lang] = {
-            word: word.word,
-            description: word.description,
-          };
-        } else {
-          vocabObj[word.lang] = {
-            word: word.word,
-          };
-        }
+        vocabObj[word.lang] = word.description
+          ? {
+              word: word.word,
+              description: word.description,
+            }
+          : {
+              word: word.word,
+            };
       }
 
       return {
