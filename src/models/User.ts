@@ -4,6 +4,7 @@ import error from '@error/ErrorDictionary';
 export interface UserInterface {
   userid: string;
   password: string;
+  email: string;
   enckey: string;
   authority?: string;
   langsort: string[];
@@ -16,6 +17,7 @@ export interface UserDocument extends Document, UserInterface {
 const UserSchema = new Schema<UserDocument>({
   userid: { type: String, required: true, lowercase: true },
   password: { type: String, required: true },
+  email: { type: String, required: true },
   enckey: { type: String, required: true },
   authority: { type: String, default: 'normal' },
   langsort: { type: [String], default: [] },

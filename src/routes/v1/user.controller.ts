@@ -22,12 +22,14 @@ export default class UserController {
   @SetMiddleware(RateLimiter(5, 5))
   @SetSuccessMessage('User created successfully')
   async create(req: WrappedRequest): Promise<void> {
-    const { userid, password } = req.verify.body({
+    const { userid, password, email, langsort } = req.verify.body({
       userid: DataTypes.string(),
       password: DataTypes.string(),
+      email: DataTypes.string(),
+      langsort: DataTypes.array({ valueVerifier: DataTypes.string() }),
     });
 
-    return await userRepository.create({ userid, password });
+    return await userRepository.create({ userid, password, email, langsort });
   }
 
   @GetMapping()

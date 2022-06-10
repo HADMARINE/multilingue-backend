@@ -4,13 +4,20 @@ import Assets, { QueryBuilder } from '@util/Assets';
 import { FilterQuery } from 'mongoose';
 
 export default class UserRepository {
-  async create(data: { userid: string; password: string }): Promise<void> {
+  async create(data: {
+    userid: string;
+    password: string;
+    email: string;
+    langsort: string[];
+  }): Promise<void> {
     const hashResult = Auth.password.create(data.password);
 
     await User.create([
       {
         userid: data.userid,
         ...hashResult,
+        email: data.email,
+        langsort: data.langsort,
       },
     ]);
   }

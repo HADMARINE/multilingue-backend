@@ -14,7 +14,7 @@ const authRepository = new AuthRepository();
 
 @Controller
 export default class AuthController {
-  @PostMapping()
+  @PostMapping('/login')
   @SetMiddleware(RateLimiter(1, 5))
   @SetSuccessMessage('Login success')
   async signIn(req: WrappedRequest): Promise<InitialTokenCreateResult | null> {
