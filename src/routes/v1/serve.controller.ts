@@ -9,8 +9,12 @@ import {
 @Controller
 export default class ServeController {
   @GetMapping('/langcode')
-  @SetSuccessMessage('langcode 1.0.0')
+  @SetSuccessMessage('langcode')
   getLangCode(req: WrappedRequest): any {
     return langcode;
+  }
+  @GetMapping('/langcode/v')
+  getLangCodeVer(): any {
+    return langcode.version;
   }
 }
